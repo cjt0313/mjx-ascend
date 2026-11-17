@@ -1,211 +1,104 @@
-<h1>
-  <a href="https://mujoco.org"><img alt="MuJoCo" src="banner.png" width="100%"/></a>
-</h1>
+# MJX Ascend
 
-<p>
-  <a href="https://mujoco.org" alt="Website">
-    <img src="https://img.shields.io/badge/website-mujoco.org-0053d6">
-  </a>
-  <a href="https://github.com/google-deepmind/mujoco/actions/workflows/build.yml?query=branch%3Amain" alt="GitHub Actions">
-    <img src="https://img.shields.io/github/actions/workflow/status/google-deepmind/mujoco/build.yml?branch=main">
-  </a>
-  <a href="https://mujoco.readthedocs.io/" alt="Documentation">
-    <img src="https://readthedocs.org/projects/mujoco/badge/?version=latest">
-  </a>
-  <a href="https://github.com/google-deepmind/mujoco/blob/main/LICENSE" alt="License">
-    <img src="https://img.shields.io/github/license/google-deepmind/mujoco">
-  </a>
-</p>
+在 Ascend NPU 上执行固定 LIBERO 场景的 MuJoCo MJX 物理回放，并逐步对照原生 MuJoCo CPU 结果。
 
-**MuJoCo** stands for **Mu**lti-**Jo**int dynamics with **Co**ntact. It is a
-general purpose physics engine that aims to facilitate research and development
-in robotics, biomechanics, graphics and animation, machine learning, and other
-areas which demand fast and accurate simulation of articulated structures
-interacting with their environment.
+本仓库只保留一条运行路径：**MJX 3.2.7 + JAX 0.8.1 + ACLNN PJRT 后端 + 75 步固定控制序列**。包含运行代码、无损压缩场景、数值回归测试和后端构建补丁，不包含历史实验入口、失败候选、模型权重或编译缓存。
 
-This repository is maintained by [Google DeepMind](https://www.deepmind.com/).
+## 支持范围
 
-MuJoCo has a C API and is intended for researchers and developers. The runtime
-simulation module is tuned to maximize performance and operates on low-level
-data structures that are preallocated by the built-in XML compiler. The library
-includes interactive visualization in native desktop windows and web browsers.
-MuJoCo further exposes a large number of utility functions for computing
-physics-related quantities.
+- 单环境、Euler 积分、FP32 MJX，CPU 对照为 MuJoCo 3.2.7 FP64。
+- 固定场景 271 个几何体、43 个速度自由度、62,709 个接触槽；接触槽容量不等于实际接触数。
+- 每步验证位置、姿态、速度、时间、有效接触数量和 NPU 设备驻留。
+- CPU 对照在 NPU 回放之前独立生成；回放期间拒绝受监控的原生 MuJoCo 调用，禁止静默 CPU 回退。
+- 圆柱–box / 圆柱–mesh 只接受严格分离状态；触碰、穿透和无效查询拒绝执行。
 
-We also provide [Python bindings] and a plug-in for the [Unity] game engine.
+这不是完整 LIBERO 控制器/策略闭环，也不代表任意场景兼容。固定轨迹没有有效 BOX–MESH 接触，不能据此证明通用 mesh 接触行为。当前目标是可复现正确性，尚未达到实用仿真速度。
 
-## Documentation
+## 环境
 
-MuJoCo's documentation can be found at [mujoco.readthedocs.io]. Upcoming
-features due for the next release can be found in the [changelog] in the
-"latest" branch.
+已使用的平台：Linux x86_64、Ascend 910B2C、CANN 9.0.0、Python 3.11。驱动与 CANN 必须由运行平台提供；pip 不安装设备驱动。
 
-## Getting Started
-
-1. **Try MuJoCo in your browser.**
-Visit [mujoco.org](https://mujoco.org) to explore MuJoCo on desktop or mobile
-with nothing to install, or open [live.mujoco.org](https://live.mujoco.org) to
-inspect and drag and drop your own models in the WebAssembly version of the
-[MuJoCo Studio] app (slower than native C, since it runs in WebAssembly).
-
-2. **Run a viewer on your machine.**
-Follow the [Getting Started] guide in the documentation to download a prebuilt
-release and run the [MuJoCo Studio] app or the classic `simulate` viewer (shown
-in [this video](https://www.youtube.com/watch?v=P83tKA1iz2Y)) on your machine.
-
-3. **Explore our online IPython notebooks.**
-If you are a Python user, you might want to start with our tutorial notebooks
-running on Google Colab:
-
- - The **introductory** tutorial teaches MuJoCo basics:
-   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/google-deepmind/mujoco/blob/main/python/tutorial.ipynb)
- - The **Model Editing** tutorial shows how to create and edit models procedurally:
-   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/google-deepmind/mujoco/blob/main/python/mjspec.ipynb)
- - The **rollout** tutorial shows how to use the multithreaded `rollout` module:
-   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/google-deepmind/mujoco/blob/main/python/rollout.ipynb)
- - The **LQR** tutorial synthesizes a linear-quadratic controller, balancing a
-   humanoid on one leg:
-   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/google-deepmind/mujoco/blob/main/python/LQR.ipynb)
- - The **least-squares** tutorial explains how to use the Python-based nonlinear
-   least-squares solver:
-   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/google-deepmind/mujoco/blob/main/python/least_squares.ipynb)
- - The **MJX** tutorial provides usage examples of
-   [MuJoCo XLA](https://mujoco.readthedocs.io/en/stable/mjx.html), a branch of MuJoCo written in JAX:
-   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/google-deepmind/mujoco/blob/main/mjx/tutorial.ipynb)
- - The **differentiable physics** tutorial trains locomotion policies with
-   analytical gradients automatically derived from MuJoCo's physics step:
-   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/google-deepmind/mujoco/blob/main/mjx/training_apg.ipynb)
-
-## Installation
-
-### Prebuilt binaries
-
-Versioned releases are available as precompiled binaries from the GitHub
-[releases page], built for Linux (x86-64 and AArch64), Windows (x86-64 only),
-and macOS (universal). This is the recommended way to use the software.
-
-### Building from source
-
-Users who wish to build MuJoCo from source should consult the [build from
-source] section of the documentation. However, note that the commit at
-the tip of the `main` branch may be unstable.
-
-### Python (>= 3.11)
-
-The native Python bindings, which come pre-packaged with a copy of MuJoCo, can
-be installed from [PyPI] via:
+在有持久存储的目录 clone 并创建环境：
 
 ```bash
-pip install mujoco
+git clone https://github.com/cjt0313/mjx-ascend.git
+cd mjx-ascend
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pip install --no-deps -e .
+source /usr/local/Ascend/cann-9.0.0/set_env.sh
 ```
 
-Note that Pre-built Linux wheels target `manylinux2014`, see
-[here](https://github.com/pypa/manylinux) for compatible distributions. For more
-information such as building the bindings from source, see the [Python bindings]
-section of the documentation.
+`set_env.sh` 路径按 CANN 安装位置调整。需要提供 `libpython3.11.so` 的 Python 安装；若环境缺失共享库，先安装匹配的 Python，而不是链接其他 Python ABI。
 
-## Versioning
+## 构建后端
 
-We aim to release MuJoCo in the first week of each month. Our versioning
-standards changed to modified Semantic Versioning in 3.5.0,
-see [versioning](VERSIONING.md) for details.
+首次构建需要 JDK 21、Bazel 7.7.0、C/C++ 编译工具和联网下载 OpenXLA 依赖。构建可能耗时较长、占用较多磁盘。详情见 [后端构建说明](backend/README.md)。所有源码和缓存位于显式指定目录：
 
-## Contributing
-
-We welcome community engagement: questions, requests for help, bug reports and
-feature requests. To read more about bug reports, feature requests and more
-ambitious contributions, please see our [contributors guide](CONTRIBUTING.md)
-and [style guide](STYLEGUIDE.md).
-
-## Asking Questions
-
-Questions and requests for help are welcome as a GitHub
-["Asking for Help" Discussion](https://github.com/google-deepmind/mujoco/discussions/categories/asking-for-help)
-and should focus on a specific problem or question.
-
-## Bug reports and feature requests
-
-GitHub [Issues](https://github.com/google-deepmind/mujoco/issues) are reserved
-for bug reports, feature requests and other development-related subjects.
-
-## Related software
-MuJoCo is the backbone for numerous environment packages. Below we list several
-bindings and converters.
-
-### Bindings
-
-These packages give users of various languages access to MuJoCo functionality:
-
-#### First-party bindings:
-
-- [Python bindings](https://mujoco.readthedocs.io/en/stable/python.html)
-  - [dm_control](https://github.com/google-deepmind/dm_control), Google
-    DeepMind's related environment stack, includes
-    [PyMJCF](https://github.com/google-deepmind/dm_control/blob/main/dm_control/mjcf/README.md),
-    a module for procedural manipulation of MuJoCo models.
-- [JavaScript bindings and WebAssembly support](/wasm/README.md) (inspired [stillonearth](https://github.com/stillonearth) and [zalo](https://github.com/zalo)'s community projects; [mjswan](https://github.com/ttktjmt/mjswan) extends these with real-time policy control, interactive force
-application, and more).
-- [C# bindings and Unity plug-in](https://mujoco.readthedocs.io/en/stable/unity.html)
-
-#### Third-party bindings:
-
-- **MATLAB Simulink**: [Simulink Blockset for MuJoCo Simulator](https://github.com/mathworks-robotics/mujoco-simulink-blockset)
-  by [Manoj Velmurugan](https://github.com/vmanoj1996).
-- **Swift**: [swift-mujoco](https://github.com/liuliu/swift-mujoco)
-- **Java**: [mujoco-java](https://github.com/CommonWealthRobotics/mujoco-java)
-- **Julia**: [MuJoCo.jl](https://github.com/JamieMair/MuJoCo.jl)
-- **Rust**: [MuJoCo-rs](https://github.com/davidhozic/mujoco-rs)
-
-### Converters
-
-- **OpenSim**: [MyoConverter](https://github.com/MyoHub/myoconverter) converts
-  OpenSim models to MJCF.
-- **SDFormat**: [gz-mujoco](https://github.com/gazebosim/gz-mujoco/) is a
-  two-way SDFormat <-> MJCF conversion tool.
-- **OBJ**: [obj2mjcf](https://github.com/kevinzakka/obj2mjcf)
-  a script for converting composite OBJ files into a loadable MJCF model.
-- **onshape**: [Onshape to Robot](https://github.com/rhoban/onshape-to-robot)
-  Converts [onshape](https://www.onshape.com/en/) CAD assemblies to MJCF.
-
-## Citation
-
-If you use MuJoCo for published research, please cite:
-
-```
-@inproceedings{todorov2012mujoco,
-  title={MuJoCo: A physics engine for model-based control},
-  author={Todorov, Emanuel and Erez, Tom and Tassa, Yuval},
-  booktitle={2012 IEEE/RSJ International Conference on Intelligent Robots and Systems},
-  pages={5026--5033},
-  year={2012},
-  organization={IEEE},
-  doi={10.1109/IROS.2012.6386109}
-}
+```bash
+python backend/build.py --work-dir "$PWD/.cache/backend" --jobs 4
+export MJX_NPU_PLUGIN_PATH="$PWD/.cache/backend/output/pjrt_c_api_npu_plugin.so"
 ```
 
-## License and Disclaimer
+后端版本、补丁与源码校验值全部固定。仓库不提交 `.so`。已有匹配构建可直接设置 `MJX_NPU_PLUGIN_PATH`，回放报告记录实际插件 hash；不能用任意插件冒充已验证版本。
 
-Copyright 2021 DeepMind Technologies Limited.
+## 运行
 
-Box collision code ([`engine_collision_box.c`](https://github.com/google-deepmind/mujoco/blob/main/src/engine/engine_collision_box.c))
-is Copyright 2016 Svetoslav Kolev.
+从仓库根目录执行，输出目录必须是新目录：
 
-ReStructuredText documents, images, and videos in the `doc` directory are made
-available under the terms of the Creative Commons Attribution 4.0 (CC BY 4.0)
-license. You may obtain a copy of the License at
-https://creativecommons.org/licenses/by/4.0/legalcode.
+```bash
+bash scripts/run.sh --output "$PWD/outputs/replay75" \
+  --steps 75 --reference "$PWD/scene/reference.npz" --stage-timing
+```
 
-Source code is licensed under the Apache License, Version 2.0. You may obtain a
-copy of the License at https://www.apache.org/licenses/LICENSE-2.0.
+- `--reference`：同时比较随包提供的已验证 NPU 轨迹，要求 qpos/qvel/time 逐字节一致；CPU 数值门槛仍独立执行。
+- `--stage-timing`：保存同步阶段计时，会增加测量开销；测总步延迟时应另开输出目录并去掉该参数。
+- `--device 0`：选择可见 NPU 列表中的第 0 张，不是 `npu-smi` 显示的物理编号；进程之间的设备资源由运行平台管理。
+- `--steps 1`：仅作单步检查，不等于完整 75 步验收。
+- 失败时返回非零退出码，并尽可能在 `report.json` 保留错误和已完成状态。
 
-This is not an officially supported Google product.
+程序自动校验并解压 `scene/model.mjb.gz` 到输出目录，不需要安装 LIBERO、访问旧工作区或下载 mesh 资产。仅解压文件约 251 MiB，请为运行目录预留空间。
 
-[build from source]: https://mujoco.readthedocs.io/en/latest/programming#building-from-source
-[Getting Started]: https://mujoco.readthedocs.io/en/latest/programming#getting-started
-[MuJoCo Studio]: https://mujoco.readthedocs.io/en/latest/studio/
-[Unity]: https://unity.com/
-[releases page]: https://github.com/google-deepmind/mujoco/releases
-[mujoco.readthedocs.io]: https://mujoco.readthedocs.io
-[changelog]: https://mujoco.readthedocs.io/en/latest/changelog.html
-[Python bindings]: https://mujoco.readthedocs.io/en/stable/python.html#python-bindings
-[PyPI]: https://pypi.org/project/mujoco/
+## 结果判断
+
+`report.json` 顶层 `verdict == "passed"` 才表示所请求步数通过；完整验收还要求 `steps == 75`。
+
+| 指标 | 门槛 |
+|---|---:|
+| 非四元数 qpos 最大绝对误差 | ≤ 1e-5 |
+| 姿态夹角误差 | ≤ 1e-4 rad |
+| qvel 最大绝对误差 | ≤ 1e-4 |
+| 仿真时间误差 | ≤ 1e-6 |
+| 每步有效接触数量 | 与 CPU 参考一致 |
+| 受监控原生调用次数 | 0 |
+| 指定 NPU 参考轨迹时 | qpos/qvel/time 字节一致 |
+
+第一个物理步包含 JIT 编译开销。热运行统计应排除首步，区分阶段同步计时与无阶段计时，并报告硬件、插件 hash、median/p95。物理步吞吐不能当作策略 FPS，多环境摊销延迟不能当作单环境延迟。
+
+本次仓库整理后的实际验证结果见 [验证说明](docs/验证说明.md)。
+
+## 开发检查
+
+```bash
+JAX_PLATFORMS=cpu python -m unittest discover -s tests -v
+python -m compileall -q mjx_ascend tests backend/build.py
+# 可选开发工具，不属于运行依赖：python -m pip install ruff
+python -m ruff check mjx_ascend tests backend/build.py
+```
+
+测试覆盖保守剔除/溢出回退、候选打包、接触模板、box 接触修正、圆柱数值处理、椭圆锥 Hessian、数据完整性与失败拒绝。通过 CPU 单元测试不能替代真实 NPU 75 步回放。
+
+## 目录
+
+```text
+mjx_ascend/       固定回放入口、场景加载、数值验证与必要适配
+scene/           压缩模型、初始状态、75 步控制及参考轨迹
+backend/         固定上游版本、源码补丁、构建与运行环境脚本
+tests/           与当前运行路径相关的回归测试
+scripts/run.sh   可重复调用的运行入口
+docs/            中文架构、数据与验证说明
+licenses/        第三方许可证
+```
+
+详细内容：[实现说明](docs/实现说明.md) · [场景说明](docs/场景说明.md) · [第三方来源](THIRD_PARTY_NOTICES.md)。

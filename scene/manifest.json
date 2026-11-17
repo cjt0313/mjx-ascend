@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "mujoco_version": "3.2.7",
+  "state_specification": 8191,
+  "model_sha256": "9589ef7fa3d6b4aa60f45a0b4a0b28374e22a89bb8f7813ecfbfc72618e53545",
+  "model_gzip_sha256": "4bca2a665758ba726a2191291c3b635a299d69258d6b0eb9742c6ee099e6c580",
+  "replay_sha256": "2f56c195f6ddacad8ae3b3a5b3340df75d9c4e732bae19634159d73d1c94f5da",
+  "reference_sha256": "5ef38504a4f8fa03a54e3ced0dafb6ea25d196b32a541964569d3fbf14be97a0",
+  "model_config_hash": "bb60ef0e16348bed283f729fa79ceb120a95f037ac0596255c888efe7545e101",
+  "steps": 75,
+  "nq": 48,
+  "nv": 43,
+  "nu": 9,
+  "ngeom": 271,
+  "task": "pick_up_the_black_bowl_between_the_plate_and_the_ramekin_and_place_it_on_the_plate",
+  "suite": "libero_spatial",
+  "source_model": "LIBERO captured model, MuJoCo 3.2.7; binary contains mesh/texture assets",
+  "scope": "Frozen controls; not controller or policy evaluation",
+  "reference_plugin_sha256": "1eba6ddb24b959208d98f60141427a14fb4732679d7474678442b9b38f160273"
+}

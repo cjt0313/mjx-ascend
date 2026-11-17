@@ -1,2 +1,0 @@
-include LICENSE *.md
-recursive-include mujoco_studio_wasm/dist *

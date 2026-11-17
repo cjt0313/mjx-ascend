@@ -1,4 +1,0 @@
-ignore_directories([
-    "bazel-*",
-    "**/bazel-*",
-])

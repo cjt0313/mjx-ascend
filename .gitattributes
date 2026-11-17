@@ -1,0 +1,2 @@
+# Unified diff context includes significant whitespace; preserve the verified patch.
+backend/xla-npu.patch -whitespace

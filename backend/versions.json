@@ -1,0 +1,16 @@
+{
+  "xla_npu": {
+    "url": "https://gitcode.com/cann/xla-npu.git",
+    "commit": "b3a3e9c498ceb88278d9ba3d9e4d202bb1b8c24a"
+  },
+  "xla": {
+    "url": "https://github.com/openxla/xla.git",
+    "commit": "a7e58876b73dfa9bb6bc785f6981a332c133bb55"
+  },
+  "python": "3.11",
+  "jax": "0.8.1",
+  "bazel": "7.7.0",
+  "java": "21",
+  "cann": "9.0.0",
+  "backend": 0
+}
